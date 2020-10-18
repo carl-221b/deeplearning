@@ -19,13 +19,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import os 
+import operator
+
 print('tensorflow:', tf.__version__)
 print('keras:', tensorflow.keras.__version__)
 
 ##Uncomment the following two lines if you get CUDNN_STATUS_INTERNAL_ERROR initialization errors.
 ## (it happens on RTX 2060 on room 104/moneo or room 204/lautrec) 
-#physical_devices = tf.config.experimental.list_physical_devices('GPU')
-#tf.config.experimental.set_memory_growth(physical_devices[0], True)
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
 
@@ -86,7 +88,7 @@ def history(history):
   plt.title('Model accuracy')
   plt.ylabel('Accuracy')
   plt.xlabel('Epoch')
-  plt.legend(['Train', 'Test'], loc='upper leftX')
+  plt.legend(['Train', 'Test'], loc='upper left')
   plt.show()
 
   # Plot training & validation loss values
@@ -134,37 +136,37 @@ else:
    print('Test accuracy:', score[1])
    mnist.save("mnist_model.h5")
 
-result_proba = mnist.predict(x_test)
-correct_indices = np.nonzero((result_proba>0.5) == (y_test==1))[0]
-incorrect_indices = np.nonzero((result_proba>0.5) != (y_test==1))[0]
-
-## Pour plusieurs images
-# charger les images
+y_hat = mnist.predict(x_test)
+plt.figure(figsize=(14,14))
+min = np.ones((25,2))
 
 class_names = ['0', '1', '2', '3', '4',
                '5', '6', '7', '8', '9']
-#0 = mal classes
-#1= bien classes
-def plotResult (x):
-    if(x==1):
-        plt.figure("Bien classes",figsize=(10,10))
-    else:
-        plt.figure("Mal classes",figsize=(10,10))
-    for i in range(25):
-        if(x==1):
-            index = correct_indices[random.randrange(correct_indices.shape[0])]
-        else:
-            index = incorrect_indices[random.randrange(incorrect_indices.shape[0])]
-        plt.subplot(5,5,i+1)
-        plt.xticks([])
-        plt.yticks([])
-        plt.grid(False)
-        plt.imshow(x_test[index], cmap=plt.cm.binary)
-        proba = result_proba[index][np.argmax(y_test[index][:])] * 100
-        proba = round (proba,3)
-        plt.xlabel("VT: " + str(np.argmax(y_test[index][:]))+" P: " + str(np.argmax(result_proba[index][:])) + " (" + str(proba) + "%)" )
+               
+for i in range(y_hat.shape[0]):
+  class_test = np.argmax(y_test[i][:])
+  class_pred = np.argmax(y_hat[i][:])
+  if(class_test != class_pred) :
+    for j in range(25) :
+      if min[j][0] > y_hat[i][class_pred] :
+        min[j][0] = y_hat[i][class_pred]
+        min[j][1] = i
+        min = sorted(min, key=operator.itemgetter(0), reverse = True)
+        break
+min = sorted(min, key=operator.itemgetter(0))
 
-    plt.show()
 
-plotResult(1)
-plotResult(0)
+for i in range(25):
+    pic = (int)(min[i][1])
+    plt.subplot(5,5,i+1)
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+    plt.imshow(x_test[pic], cmap=plt.cm.binary)
+    # The CIFAR labels happen to be arrays, 
+    # which is why you need the extra index
+    class_test = np.argmax(y_test[pic][:])
+    class_pred = np.argmax(y_hat[pic][:])
+    percentage = str(int(y_hat[pic][class_pred]*100))
+    plt.xlabel("VT : " + class_names[class_test] + ", Pred : " + class_names[class_pred] + " (" + percentage + "%)")
+plt.show()
